@@ -43,19 +43,21 @@ Updated at every working session. Language: English.
 | D-12 | 2026-10-13 | The previous chunk is sent **only and exclusively as read-only context**. The prompt states explicitly that it may contain uncorrected errors, must not be corrected, and must not be used as a model of style or rules for the target. | Prevents the model from (a) correcting outside the target, (b) "learning" from errors the user chose to keep, (c) imitating context choices. | Accepted |
 | D-13 | 2026-10-13 | Requests are **stateless** (one request per chunk, explicit context). When a chunk changes after the following one was analysed, the following chunk becomes **`stale`** and is re-analysed **on demand** (dedicated key), with a visible flag in the sidebar. | Bounded token cost, no context-window overflow, reproducible results; on-demand re-analysis avoids blocking the UI with a slow local model. Resolves Q-02. | Accepted |
 | D-14 | 2026-10-13 | Synchronized scrolling is **per chunk**: each chunk occupies in both panes the height of the longer of its two versions (original / corrected), computed dynamically at render time (not fixed a priori), so paragraphs stay aligned. | Line-level sync breaks as soon as a correction changes the text length; fixed heights would truncate or waste space. | Accepted |
-| D-15 | 2026-10-13 | **One widget per chunk** in both main panes. No visible borders on chunks; only the chunk currently under review gets a light highlight that does not change the layout (e.g. background tint or a left bar that is always reserved but transparent when inactive). Spacing between chunks = one blank line, like normal paragraphs. | Chunk widgets give natural targets for navigation, sidebar sync and per-chunk height alignment (D-14); text must still read as a continuous document. | Accepted |
+| D-15 | 2026-10-13 | **One widget per chunk** in both main panes. No visible borders on chunks; only the chunk currently under review gets a **slightly different background tint** (chosen over a left bar: it does not change the layout and stays unobtrusive). Spacing between chunks = one blank line, like normal paragraphs. | Chunk widgets give natural targets for navigation, sidebar sync and per-chunk height alignment (D-14); text must still read as a continuous document. | Accepted |
 | D-16 | 2026-10-13 | The source text is displayed **as raw text, never interpreted** (no Markdown/LaTeX rendering, no Textual markup), through a single format-aware render function in `ui/` (format → renderer registry). Today every format maps to "literal text"; syntax highlighting can be added later per format without touching the rest. | Proofreading works on the raw characters: rendering would hide symbols (`**`, `\emph{}`) and break the mapping between suggestions and positions. A single entry point mirrors the `{format_rules}` design (D-11). | Accepted |
-| D-17 | 2026-10-13 | **Sequential anchoring:** suggestions are anchored in order, each search starting after the previous match (cursor). The prompt asks for suggestions in order of appearance. Fallbacks: unique match → use it; several matches → first one after the cursor; none after the cursor → search from the start; still none → fuzzy; else discard. No `occurrence` field for now. | Solves most ambiguous spans (Q-05) without asking the LLM for counts it may get wrong; order compliance becomes another measurable property. | Proposed (to validate experimentally) |
+| D-17 | 2026-10-13 | **Sequential anchoring:** suggestions are anchored in order, each search starting after the previous match (cursor). The prompt asks for suggestions in order of appearance. Fallbacks: unique match → use it; several matches → first one after the cursor; none after the cursor → search from the start; still none → fuzzy; else discard. No `occurrence` field for now. | Solves most ambiguous spans (Q-05) without asking the LLM for counts it may get wrong; order compliance becomes another measurable property. | Accepted (to validate experimentally) |
+| D-18 | 2026-10-13 | **Explanation depth by category:** `semantic` suggestions get a deeper explanation (2-3 sentences, example not mandatory); all other categories (grammar, spelling, punctuation, …) keep one short sentence. No separate `example` field. Prompt v0.3, rule 9. | Grammar errors are self-evident and a long text would slow reading and generation; semantic errors need reasoning to be understood and accepted by the user. Resolves Q-01. | Accepted |
+| D-19 | 2026-10-13 | The LLM returns **only fragments** (`original`, `replacement`), never the full chunk text. The full text is held by the software. | Fewer output tokens (faster, cheaper, especially on local models); no risk of the model silently altering untouched parts of the chunk. | Accepted |
 
 ---
 
 ## 2. Open questions
 
-- **Q-01 — `explanation` field:** options — (A) short explanation only; (B) explanation + `example` field generated in the same request; (C) explanation only, plus an "explain more" key that sends a second, on-demand request for an example. Undecided.
+- ~~**Q-01 — `explanation` field**~~ → resolved by D-18 (deeper explanation for semantic suggestions only).
 - ~~**Q-02 — Context for chunk N**~~ → resolved by D-12 and D-13 (context = current version of N-1 with accepted changes only; `stale` + on-demand re-analysis).
 - **Q-03 — Chunk length:** optimal length for precision; to be measured experimentally (literature gives precision-vs-length curves as starting point).
 - **Q-04 — Local model choice:** which model fits the hardware with good quality (see §4).
-- **Q-05 — Ambiguous spans:** → proposed solution D-17 (sequential anchoring); `occurrence` field kept as a fallback idea if experiments show it is needed.
+- ~~**Q-05 — Ambiguous spans**~~ → resolved by D-17 (sequential anchoring); `occurrence` field kept as a fallback idea if experiments show it is needed.
 
 ---
 
@@ -63,7 +65,7 @@ Updated at every working session. Language: English.
 
 | ID | Change | Owner | Status |
 |---|---|---|---|
-| C-01 | `Static` widgets in `main.py` parse Rich/Textual markup: user text containing `[...]` may render wrongly or raise a markup error. User text must be displayed literally, via the single render function of D-16. | Luca (implementation), Claude (review) | To do — at the start of the implementation phase |
+| C-01 | `Static` widgets in `main.py` parse Rich/Textual markup: user text containing `[...]` may render wrongly or raise a markup error. User text must be displayed literally, via the single render function of D-16 (`ui/render.py`, solution provided in session 2). | Luca | To do — at the start of the implementation phase |
 | C-02 | Restructure the project into `core/`, `llm/`, `ui/` (D-07). | — | To do |
 | C-03 | CLI: add `--format` (e.g. `md`, `txt`, later `tex`) and `--lang` options; their values feed the prompt (D-11). | Luca | To do |
 | C-04 | Add `docs/thesis_log.md` and `prompts/` to the repository so they are versioned with the code. | Luca | In progress |
@@ -109,3 +111,4 @@ Notes that can become sections of the thesis.
 - C-01 (markup) explained with examples; implementation pending (Luca).
 - Next step agreed: build the `llm/` layer in isolation (no UI).
 - Later in the session: raw-text display through a format-aware render function (D-16); chunk widgets with light, layout-neutral highlight (D-15); sequential anchoring proposal (D-17); Q-01 options listed; new metrics (context leakage, order compliance). Log and prompt moved to the repository (C-04).
+- Render function for raw text defined (D-16, `ui/render.py`); background tint for the active chunk (D-15); explanation depth by category, prompt v0.3 (D-18); LLM returns fragments only (D-19). Q-01 and Q-05 closed.
