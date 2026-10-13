@@ -1,4 +1,6 @@
-# Prompt v0.1 — Draft
+# LLM Proofreading Prompt
+
+**Current version: v0.2**
 
 Placeholders in `{curly_braces}` are filled by the software before each request.
 `{language}` and `{doc_format}` come from the CLI (`--lang`, `--format`);
@@ -6,9 +8,11 @@ Placeholders in `{curly_braces}` are filled by the software before each request.
 Every request is **stateless**: system prompt + one user message (context + target chunk).
 
 ## Changelog
+- **v0 (2026-10-12)** — First draft.
 - **v0.1 (2026-10-13)** — Context is explicitly read-only and may contain uncorrected
   errors (D-12); per-format rules block `{format_rules}` driven by the CLI (D-11).
-- **v0 (2026-10-12)** — First draft.
+- **v0.2 (2026-10-13)** — Suggestions listed in order of appearance (rule 7b,
+  needed by sequential anchoring D-17).
 
 ---
 
@@ -57,6 +61,7 @@ RULES
    neighbouring words.
 7. A suggestion may span from a single word up to one sentence. Never propose
    rewriting the whole passage.
+7b. List the suggestions in the order in which they appear in <target>.
 8. If the target has no issues, set "has_errors" to false and return an empty
    "suggestions" list. Do not invent problems.
 9. Write "explanation" in English, in one short sentence.
@@ -188,5 +193,5 @@ The proposed method is faster than the baseline on all three datasets.
 - `{max_suggestions}`: start with 5 and tune experimentally.
 - Request parameters: `temperature = 0` for reproducibility.
 - Possible additions: few-shot examples, optional `example` field in explanation (Q-01).
-- Keep every prompt version in the repo (`prompts/v0`, `v0.1`, …) and record
-  which version produced each experiment result.
+- One file (`prompts/prompt.md`), versions tracked by git + the changelog above.
+  Record which version produced each experiment result.
