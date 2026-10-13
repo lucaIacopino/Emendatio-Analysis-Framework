@@ -1,6 +1,6 @@
 # LLM Proofreading Prompt
 
-**Current version: v0.3**
+**Current version: v0.4**
 
 Placeholders in `{curly_braces}` are filled by the software before each request.
 `{language}` and `{doc_format}` come from the CLI (`--lang`, `--format`);
@@ -15,6 +15,7 @@ Every request is **stateless**: system prompt + one user message (context + targ
   needed by sequential anchoring D-17).
 - **v0.3 (2026-10-13)** — Explanation length depends on category: 2-3 sentences
   for "semantic", one short sentence otherwise (rule 9, D-18).
+- **v0.4 (2026-10-13)** — Longer explanation extended to "clarity" (rule 9, D-18).
 
 ---
 
@@ -66,9 +67,10 @@ RULES
 7b. List the suggestions in the order in which they appear in <target>.
 8. If the target has no issues, set "has_errors" to false and return an empty
    "suggestions" list. Do not invent problems.
-9. Write "explanation" in English. For "semantic" suggestions, explain in
-   2-3 sentences why the original is wrong or misleading and how the
-   replacement fixes it. For all other categories, use one short sentence.
+9. Write "explanation" in English. For "semantic" and "clarity" suggestions,
+   explain in 2-3 sentences why the original is wrong, misleading or hard to
+   understand, and how the replacement fixes it. For all other categories,
+   use one short sentence.
 10. Answer ONLY with a JSON object that follows the schema. No other text.
 
 OUTPUT SCHEMA
@@ -196,7 +198,6 @@ The proposed method is faster than the baseline on all three datasets.
 
 - `{max_suggestions}`: start with 5 and tune experimentally.
 - Request parameters: `temperature = 0` for reproducibility.
-- Possible additions: few-shot examples; extend the longer explanation to
-  "clarity" if useful.
+- Possible additions: few-shot examples.
 - One file (`prompts/prompt.md`), versions tracked by git + the changelog above.
   Record which version produced each experiment result.
