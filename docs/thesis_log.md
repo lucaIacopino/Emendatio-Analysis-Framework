@@ -42,17 +42,20 @@ Updated at every working session. Language: English.
 | D-11 | 2026-10-13 | The document format (and the language) are given **from the CLI** at launch and are injected directly into the prompt (`{doc_format}`, `{format_rules}`, `{language}`). | One single source of truth: the user's CLI choice drives both file handling and LLM instructions; adding a format = adding a rules block, not new code paths. | Accepted |
 | D-12 | 2026-10-13 | The previous chunk is sent **only and exclusively as read-only context**. The prompt states explicitly that it may contain uncorrected errors, must not be corrected, and must not be used as a model of style or rules for the target. | Prevents the model from (a) correcting outside the target, (b) "learning" from errors the user chose to keep, (c) imitating context choices. | Accepted |
 | D-13 | 2026-10-13 | Requests are **stateless** (one request per chunk, explicit context). When a chunk changes after the following one was analysed, the following chunk becomes **`stale`** and is re-analysed **on demand** (dedicated key), with a visible flag in the sidebar. | Bounded token cost, no context-window overflow, reproducible results; on-demand re-analysis avoids blocking the UI with a slow local model. Resolves Q-02. | Accepted |
-| D-14 | 2026-10-13 | Synchronized scrolling is **per chunk**: each chunk occupies in both panes the height of the longer of its two versions (original / corrected), so paragraphs stay aligned. | Line-level sync breaks as soon as a correction changes the text length. | Accepted |
+| D-14 | 2026-10-13 | Synchronized scrolling is **per chunk**: each chunk occupies in both panes the height of the longer of its two versions (original / corrected), computed dynamically at render time (not fixed a priori), so paragraphs stay aligned. | Line-level sync breaks as soon as a correction changes the text length; fixed heights would truncate or waste space. | Accepted |
+| D-15 | 2026-10-13 | **One widget per chunk** in both main panes. No visible borders on chunks; only the chunk currently under review gets a light highlight that does not change the layout (e.g. background tint or a left bar that is always reserved but transparent when inactive). Spacing between chunks = one blank line, like normal paragraphs. | Chunk widgets give natural targets for navigation, sidebar sync and per-chunk height alignment (D-14); text must still read as a continuous document. | Accepted |
+| D-16 | 2026-10-13 | The source text is displayed **as raw text, never interpreted** (no Markdown/LaTeX rendering, no Textual markup), through a single format-aware render function in `ui/` (format → renderer registry). Today every format maps to "literal text"; syntax highlighting can be added later per format without touching the rest. | Proofreading works on the raw characters: rendering would hide symbols (`**`, `\emph{}`) and break the mapping between suggestions and positions. A single entry point mirrors the `{format_rules}` design (D-11). | Accepted |
+| D-17 | 2026-10-13 | **Sequential anchoring:** suggestions are anchored in order, each search starting after the previous match (cursor). The prompt asks for suggestions in order of appearance. Fallbacks: unique match → use it; several matches → first one after the cursor; none after the cursor → search from the start; still none → fuzzy; else discard. No `occurrence` field for now. | Solves most ambiguous spans (Q-05) without asking the LLM for counts it may get wrong; order compliance becomes another measurable property. | Proposed (to validate experimentally) |
 
 ---
 
 ## 2. Open questions
 
-- **Q-01 — `explanation` field:** keep a short explanation only, or also show an example below it? Undecided.
+- **Q-01 — `explanation` field:** options — (A) short explanation only; (B) explanation + `example` field generated in the same request; (C) explanation only, plus an "explain more" key that sends a second, on-demand request for an example. Undecided.
 - ~~**Q-02 — Context for chunk N**~~ → resolved by D-12 and D-13 (context = current version of N-1 with accepted changes only; `stale` + on-demand re-analysis).
 - **Q-03 — Chunk length:** optimal length for precision; to be measured experimentally (literature gives precision-vs-length curves as starting point).
 - **Q-04 — Local model choice:** which model fits the hardware with good quality (see §4).
-- **Q-05 — Ambiguous spans:** when `original` occurs more than once in the chunk, ask for longer spans in the prompt, or add an `occurrence` field?
+- **Q-05 — Ambiguous spans:** → proposed solution D-17 (sequential anchoring); `occurrence` field kept as a fallback idea if experiments show it is needed.
 
 ---
 
@@ -60,10 +63,10 @@ Updated at every working session. Language: English.
 
 | ID | Change | Owner | Status |
 |---|---|---|---|
-| C-01 | `Static` widgets in `main.py` parse Rich/Textual markup: user text containing `[...]` may render wrongly or raise a markup error. User text must be displayed literally. | Luca (implementation), Claude (review) | To do |
+| C-01 | `Static` widgets in `main.py` parse Rich/Textual markup: user text containing `[...]` may render wrongly or raise a markup error. User text must be displayed literally, via the single render function of D-16. | Luca (implementation), Claude (review) | To do — at the start of the implementation phase |
 | C-02 | Restructure the project into `core/`, `llm/`, `ui/` (D-07). | — | To do |
 | C-03 | CLI: add `--format` (e.g. `md`, `txt`, later `tex`) and `--lang` options; their values feed the prompt (D-11). | Luca | To do |
-| C-04 | Add `docs/thesis_log.md` and `prompts/` to the repository so they are versioned with the code. | Luca | To do |
+| C-04 | Add `docs/thesis_log.md` and `prompts/` to the repository so they are versioned with the code. | Luca | In progress |
 
 ---
 
@@ -83,6 +86,8 @@ Notes that can become sections of the thesis.
 - **Robustness of LLM output:** schema validation, consistency check via `has_errors`, anchoring failure rate as a metric per model.
 - **Context management:** stateless per-chunk requests vs. a conversation that grows (token cost, context window limits on local models, reproducibility).
 - **Anchoring rate (metric):** for every suggestion, record the outcome of locating `original` in the chunk — `exact`, `fuzzy`, `ambiguous`, `not_found`. Aggregated per model (and per prompt version), it measures how reliably each LLM follows the "verbatim" instruction. A suggestion that cannot be anchored is lost for the user even if it was correct, so this is a usability metric, not only a formatting one. Related metric: **schema consistency rate** (valid JSON + coherent `has_errors` flag).
+- **Context leakage rate (metric):** share of suggestions that target text found only in `<context>` (or that copy its deliberate errors). Measures compliance with D-12.
+- **Order compliance (metric):** share of responses whose suggestions are listed in order of appearance (needed by D-17).
 - **Why anchoring is done in software:** the LLM only returns text; it cannot see or edit the document as held by the application. The software must map each suggestion to a position (for highlighting, navigation and replacement) and must not trust the model output blindly.
 - **Evaluation plan (to define):** synthetic test texts with injected errors; metrics: precision/recall of detected errors, anchoring success rate, over-correction rate (changes to correct text), latency per chunk, effect of chunk length.
 - **Software engineering:** layered architecture (D-07), UI independence, testability.
@@ -95,11 +100,12 @@ Notes that can become sections of the thesis.
 - Reviewed repository skeleton (`main.py`: Textual layout with two panes + bottom area, CLI parsing for `.txt`/`.md`).
 - Agreed on: Ollama, local-first, software-managed chunk IDs, `has_errors` flag, verbatim span strategy, layered architecture, aspell-style commands, chunk sidebar, synchronized scrolling.
 - Identified C-01 (markup issue) — Luca to implement after explanation.
-- Drafted prompt v0 (`prompt_v0.md`).
+- Drafted prompt v0 (`prompts/prompt.md`).
 
 ### 2026-10-13 — Session 2
 - Decided: format and language from CLI injected into the prompt (D-11); previous chunk as strictly read-only context (D-12); stateless requests, `stale` state with on-demand re-analysis (D-13); per-chunk synchronized scrolling using the taller version (D-14).
 - Clarified why anchoring is a software responsibility; defined the anchoring rate metric.
-- Prompt updated to v0.1 (context rules, per-format rules block).
+- Prompt updated to v0.1 (context rules, per-format rules block), then v0.2 (suggestions in order of appearance).
 - C-01 (markup) explained with examples; implementation pending (Luca).
 - Next step agreed: build the `llm/` layer in isolation (no UI).
+- Later in the session: raw-text display through a format-aware render function (D-16); chunk widgets with light, layout-neutral highlight (D-15); sequential anchoring proposal (D-17); Q-01 options listed; new metrics (context leakage, order compliance). Log and prompt moved to the repository (C-04).
