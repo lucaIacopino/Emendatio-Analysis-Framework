@@ -50,6 +50,12 @@ Updated at every working session. Language: English.
 | D-19 | 2026-10-13 | The LLM returns **only fragments** (`original`, `replacement`), never the full chunk text. The full text is held by the software. | Fewer output tokens (faster, cheaper, especially on local models); no risk of the model silently altering untouched parts of the chunk. | Accepted |
 
 | D-20 | 2026-10-13 | **Source internally, rendered on screen.** All internal processing (chunking, LLM requests, anchoring, replacements, saving) works on the raw source. The two main panes show a **rendered view** derived from the source according to the format (e.g. Markdown `**word**` shown as bold *word*). The renderer must keep a **position map** (source offset → displayed offset) so that highlights computed on the source land on the right displayed characters. Phased: phase 1 = literal renderer (D-16) to get the core loop working; phase 2 = format renderers (Markdown first; LaTeX approximated, math shown as source). Textual markup is always neutralised (C-01). | Readability close to the final document, without giving up exact positions; display is a pure function of the source, so it never affects LLM or data. Supersedes the display part of D-16; resolves Q-06. | Accepted |
+| D-21 | 2026-10-15 | **Configuration:** settings (provider, model, `base_url`, `num_ctx`, temperature, seed, `max_suggestions`, timeouts, retries) in a **TOML config file**; CLI options override it. API keys only from **environment variables**, never in the repo or in run logs. | Standard layering (defaults < file < CLI); reproducible experiments from a versionable file; no secrets in git. | Accepted |
+| D-22 | 2026-10-15 | **Experiment logging (`runs/`):** one record per LLM call (JSONL), with: timestamp, provider/model, prompt version, parameters, input (context + target), raw output, parsed result or error, number of retries, latency, token counts if available, anchoring outcome of each suggestion. | Data for every thesis metric collected from the very first test; raw output kept so metrics can be recomputed later. | Accepted |
+| D-23 | 2026-10-15 | **Local model policy:** start with a 7–8B model fully in VRAM; a 12–14B model as quality comparison. Exact models chosen from the Ollama library at setup time and recorded in the log. | Fits RTX 4060 Laptop (8 GB); gives a size-vs-quality comparison for the thesis. Resolves the policy part of Q-04. | Accepted |
+| D-24 | 2026-10-15 | **Provider interface:** a single entry point `analyze(context, target) -> AnalysisResult` that `core/` and `ui/` call without knowing the provider. First implementation: OpenAI-compatible client (Ollama, ChatGPT). | Adding a non-compatible provider = adding one adapter; no change elsewhere. Resolves Q-08. | Accepted |
+| D-25 | 2026-10-15 | **Error handling in `llm/`:** server unreachable / model missing → clear message, no traceback; request timeout (configurable); invalid or incoherent JSON → retry (1-2 times, configurable) then chunk state `error` with manual retry key; estimate prompt length before sending and warn if it exceeds `num_ctx`. All failures logged in `runs/`. | Failures are expected with small local models; they must be visible, recoverable and measurable. Resolves Q-07. | Accepted |
+| D-26 | 2026-10-15 | **Chunking within a length interval `[min, max]`, cut only at natural boundaries.** A chunk is made of whole paragraphs; consecutive short paragraphs are merged until `min` is reached (without exceeding `max`); a paragraph longer than `max` is split at sentence boundaries (fallback: `;`/`:`; last resort: word boundary, never inside a word). Headings are never split; code blocks are not sent to the LLM. Length measured in words (model-independent), converted to an approximate token count for the `num_ctx` check. Sentence splitting delegated to a multilingual library (e.g. pySBD, NLTK punkt) to handle abbreviations, decimals, "et al.". Initial interval to be fixed after a first experiment (Q-03). | Arbitrary cuts break sentences and context; boundaries keep chunks meaningful. Literature suggests a precision/recall trade-off with length, so the interval is a tunable parameter, not a constant. | Accepted (values TBD) |
 
 ---
 
@@ -57,8 +63,10 @@ Updated at every working session. Language: English.
 
 - ~~**Q-01 — `explanation` field**~~ → resolved by D-18 (deeper explanation for semantic and clarity suggestions).
 - ~~**Q-02 — Context for chunk N**~~ → resolved by D-12 and D-13 (context = current version of N-1 with accepted changes only; `stale` + on-demand re-analysis).
-- **Q-03 — Chunk length:** optimal length for precision; to be measured experimentally (literature gives precision-vs-length curves as starting point).
-- **Q-04 — Local model choice:** which model fits the hardware with good quality (see §4).
+- **Q-03 — Chunk length:** choose the `[min, max]` interval of D-26 experimentally. Plan: same corpus with injected errors, chunk sizes of e.g. 1, 3, 5, 10, 15, 30 sentences; measure precision, recall, F0.5, over-correction rate, anchoring rate, latency; for each local model. Expected: precision ↑ and recall ↓ as length grows (see §7 references), so an optimum should exist.
+- **Q-04 — Local model choice:** policy fixed by D-23; exact model names to be recorded after setup.
+- ~~**Q-07 — Error handling**~~ → resolved by D-25.
+- ~~**Q-08 — Provider interface**~~ → resolved by D-24.
 - ~~**Q-06 — Source view vs. rendered view**~~ → resolved by D-20 (source internally, rendered on screen, phased).
 - ~~**Q-05 — Ambiguous spans**~~ → resolved by D-17 (sequential anchoring); `occurrence` field kept as a fallback idea if experiments show it is needed.
 
@@ -117,3 +125,24 @@ Notes that can become sections of the thesis.
 - Render function for raw text defined (D-16, `ui/render.py`); background tint for the active chunk (D-15); explanation depth by category, prompt v0.3 (D-18); LLM returns fragments only (D-19). Q-01 and Q-05 closed.
 - Clarified that Textual markup is an app-internal syntax, not document formatting; opened Q-06 (source vs. rendered view). Errors highlighted via background colour.
 - Q-06 resolved: source internally, rendered view on screen with position map, phased (D-20). Longer explanation extended to `clarity` (prompt v0.4).
+
+### 2026-10-15 — Session 3
+- Agreed on the three prerequisites for `llm/`: configuration (D-21), experiment logging (D-22), local model policy (D-23).
+- Opened and closed Q-07 (error handling, D-25) and Q-08 (provider interface, D-24).
+- Chunking strategy: length interval + natural boundaries (D-26); experiment plan for Q-03; first literature review on input length (§7).
+
+---
+
+## 7. References (to read / cite)
+
+Input length and LLM correction quality — starting points for Q-03 and the related-work chapter.
+
+| Ref | Paper | Relevance |
+|---|---|---|
+| R-01 | Karpo, Chernodub — *Larger Context Window, Fewer Overcorrections: Optimizing Prompts and Batching for Minimal-Edit Grammatical Error Correction*, arXiv:2609.10810 (Sept 2026, preprint). | Closest to our question: more sentences per input (batch sizes 1–120 on BEA-2019) reduce over-correction across LLM families; larger batches favour precision at the cost of recall. Single runs, no variance reported. |
+| R-02 | Fang et al. — *Is ChatGPT a Highly Fluent Grammatical Error Correction System? A Comprehensive Evaluation*, arXiv:2304.01746 (2023). | Over-correction / no minimal edits; under-correction grows with sentence length; weak on cross-sentence errors (agreement, coreference, tense) at document level. |
+| R-03 | Davis et al. — *Prompting open-source and commercial language models for grammatical error correction of English learner text*, arXiv:2401.07702. | Open-source models vs GPT on GEC; prompt sensitivity; some open models beat GPT-3.5 on minimal-edit benchmarks. Useful for local-model choice and prompt design. |
+| R-04 | Levy, Jacoby, Goldberg — *Same Task, More Tokens: the Impact of Input Length on the Reasoning Performance of LLMs*, ACL 2024 (arXiv:2402.14848). | Performance degrades with input length well below the maximum context window. |
+| R-05 | *Context Length Alone Hurts LLM Performance Despite Perfect Retrieval*, Findings of EMNLP 2025. | Length itself degrades performance even when the relevant information is available. |
+| R-06 | Liu et al. — *Lost in the Middle: How Language Models Use Long Contexts*, TACL 2024. | Information in the middle of long inputs is used less: risk of missed errors mid-chunk. |
+| R-07 | Bryant et al. — *Grammatical Error Correction: A Survey of the State of the Art*, Computational Linguistics 49(3), 2023. | Background on GEC, standard metrics (F0.5, ERRANT). |
