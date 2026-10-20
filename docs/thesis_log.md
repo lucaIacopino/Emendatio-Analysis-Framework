@@ -77,9 +77,9 @@ Updated at every working session. Language: English.
 | ID | Change | Owner | Status |
 |---|---|---|---|
 | C-01 | `Static` widgets in `main.py` parse Rich/Textual markup: user text containing `[...]` may render wrongly or raise a markup error. User text must be displayed literally, via the single render function of D-16 (`ui/render.py`, solution provided in session 2). | Luca | To do — at the start of the implementation phase |
-| C-02 | Restructure the project into `core/`, `llm/`, `ui/` (D-07). | — | To do |
+| C-02 | Restructure the project into `core/`, `llm/`, `ui/` (D-07). | Luca | Done (2026-10-20): empty packages `core/`, `llm/`, `ui/` + `config/`, `tests/`; logic still in `main.py`, to be moved step by step |
 | C-03 | CLI: add `--format` (e.g. `md`, `txt`, later `tex`) and `--lang` options; their values feed the prompt (D-11). | Luca | To do |
-| C-04 | Add `docs/thesis_log.md` and `prompts/` to the repository so they are versioned with the code. | Luca | In progress |
+| C-04 | Add `docs/thesis_log.md` and `prompts/` to the repository so they are versioned with the code. | Luca | Done |
 
 ---
 
@@ -130,6 +130,11 @@ Notes that can become sections of the thesis.
 - Agreed on the three prerequisites for `llm/`: configuration (D-21), experiment logging (D-22), local model policy (D-23).
 - Opened and closed Q-07 (error handling, D-25) and Q-08 (provider interface, D-24).
 - Chunking strategy: length interval + natural boundaries (D-26); experiment plan for Q-03; first literature review on input length (§7).
+
+### 2026-10-20 — Session 4 (implementation starts)
+- Implementation roadmap agreed: step 0 repo setup → step 1 C-01 → step 2 Ollama → steps 3-6 `llm/` (first call, validation, anchoring, run logging) → `core/` → `ui/`.
+- Step 0 done: virtual environment (`.venv`), `.gitignore` (venv, caches, `.env` for secrets, `runs/`, `config/local.toml`), package skeleton (C-02).
+- Workflow: one concern per commit (Conventional Commits); code reviewed before committing.
 
 ---
 
