@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+.venv/
+
+# Secrets (API keys, see D-21)
+.env
+
+# Experiment runs (can grow large)
+runs/
+
+# Personal config overrides
+config/local.toml
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
