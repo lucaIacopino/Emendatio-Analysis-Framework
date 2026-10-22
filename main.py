@@ -3,6 +3,7 @@ from pathlib import Path
 from textual.app import App
 from textual.widgets import Footer, Header, Static, Button
 from textual.containers import Horizontal, VerticalScroll, Container
+from ui.render import render_source 
 
 
 class AppHome(App):
@@ -38,10 +39,11 @@ class AppHome(App):
     
     BINDINGS = [("q", "quit", "Exit")]
     
-    def __init__(self, source_text: str):
+    def __init__(self, source_text: str, doc_format: str):
         super().__init__()
-        self.source_text = source_text 
-    
+        self.source_text = source_text
+        self.doc_format = doc_format
+
     def compose(self):
         """Create the UI structure."""
         yield Header()
@@ -52,7 +54,8 @@ class AppHome(App):
         # Comparison area
         with Horizontal(id="main-body"):
             with VerticalScroll(id="source-text-raw", classes="text-box"):
-                yield Static("SOURCE TEXT (WITH ERRORS)...\n"+self.source_text)
+                yield Static("SOURCE TEXT (WITH ERRORS)...")
+                yield Static(render_source(self.source_text, self.doc_format))
             with VerticalScroll(id="source-text-corrected", classes="text-box"):
                 yield Static("SOURCE TEXT (WITH CORRECTIONS)...")
         
@@ -88,6 +91,7 @@ def main():
         
         # Find out what type of file it is using ".suffix"
         extension = args.file.suffix.lower() # Returns '.txt', '.md', etc.
+        doc_format = extension.removeprefix(".")  # Remove the dot to get 'txt', 'md', etc.
         
         if extension == '.md':
             # Read and prepare your Markdown file here
@@ -103,6 +107,7 @@ def main():
             print(f"Error: Format '{extension}' is not supported. Use only .txt or .md")
             return
     else:
+        doc_format = "md"  # Default format for testing
         extracted_text = """# The Solar System 🪐
         
 The Solar System is the planetary system in which our Earth is located. It consists of the Sun and all the celestial bodies that orbit around it, kept in motion by its immense gravitational pull.
@@ -123,7 +128,7 @@ The planets are divided into two main categories:
     
     
     
-    app_home = AppHome(source_text=extracted_text)
+    app_home = AppHome(source_text=extracted_text, doc_format=doc_format)
     app_home.run()
 
 
