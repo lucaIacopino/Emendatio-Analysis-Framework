@@ -3,8 +3,7 @@ from pathlib import Path
 from textual.app import App
 from textual.widgets import Footer, Header, Static, Button
 from textual.containers import Horizontal, VerticalScroll, Container
-from ui.render import render_source 
-
+from ui.render import render_source
 
 class AppHome(App):
     
