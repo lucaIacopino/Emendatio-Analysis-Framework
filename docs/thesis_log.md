@@ -76,7 +76,7 @@ Updated at every working session. Language: English.
 
 | ID | Change | Owner | Status |
 |---|---|---|---|
-| C-01 | `Static` widgets in `main.py` parse Rich/Textual markup: user text containing `[...]` may render wrongly or raise a markup error. User text must be displayed literally, via the single render function of D-16 (`ui/render.py`, solution provided in session 2). | Luca | To do — at the start of the implementation phase |
+| C-01 | `Static` widgets in `main.py` parse Rich/Textual markup: user text containing `[...]` may render wrongly or raise a markup error. User text must be displayed literally, via the single render function of D-16 (`ui/render.py`, solution provided in session 2). | Luca | Done (2026-10-22): `ui/render.py` added; `AppHome` receives `doc_format` (derived from the file extension, default `md`); header and source text split into two widgets |
 | C-02 | Restructure the project into `core/`, `llm/`, `ui/` (D-07). | Luca | Done (2026-10-20): empty packages `core/`, `llm/`, `ui/` + `config/`, `tests/`; logic still in `main.py`, to be moved step by step |
 | C-03 | CLI: add `--format` (e.g. `md`, `txt`, later `tex`) and `--lang` options; their values feed the prompt (D-11). | Luca | To do |
 | C-04 | Add `docs/thesis_log.md` and `prompts/` to the repository so they are versioned with the code. | Luca | Done |
@@ -135,6 +135,8 @@ Notes that can become sections of the thesis.
 - Implementation roadmap agreed: step 0 repo setup → step 1 C-01 → step 2 Ollama → steps 3-6 `llm/` (first call, validation, anchoring, run logging) → `core/` → `ui/`.
 - Step 0 done: virtual environment (`.venv`), `.gitignore` (venv, caches, `.env` for secrets, `runs/`, `config/local.toml`), package skeleton (C-02).
 - Workflow: one concern per commit (Conventional Commits); code reviewed before committing.
+- 2026-10-22 — C-01 bug reproduced: inserting `Press [red] to start and close with [/b].` in the sample text makes the app crash at layout time with `MarkupError: closing tag '[/b]' does not match any open tag` (Textual 8.2.5, Python 3.14). Evidence of why user text must never be parsed as markup ("before" for the thesis).
+- 2026-10-22 — C-01 fixed and verified: the same line, plus `[1]`, `[/b]` and a Markdown link, are shown literally with no crash, for the built-in sample (md), a `.md` file and a `.txt` file ("after" screenshots).
 
 ---
 
