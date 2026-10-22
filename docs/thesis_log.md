@@ -87,6 +87,8 @@ Updated at every working session. Language: English.
 
 - **Laptop:** MSI Katana 15 B13VFK — Intel Core i7 13th gen, NVIDIA GeForce RTX 4060 Laptop (Max-Q, 8 GB VRAM expected), 16 GB RAM DDR5-5600.
 - **Implication:** 7–9B models at 4-bit quantization fit entirely in VRAM; ~12–14B models need partial CPU offload (slower).
+- **Ollama context window:** default 4096 tokens. The OpenAI-compatible endpoint has no context-size parameter: set it server-wide with `OLLAMA_CONTEXT_LENGTH` or per model with a Modelfile (`PARAMETER num_ctx`) + `ollama create`. The native API accepts `options.num_ctx`. Relevant for D-25 (silent truncation).
+- **Ollama OpenAI-compatible endpoint:** `http://localhost:11434/v1/`, API key required by the client but ignored; supports `temperature`, `seed`, `response_format` (JSON mode).
 
 ---
 
@@ -137,6 +139,7 @@ Notes that can become sections of the thesis.
 - Workflow: one concern per commit (Conventional Commits); code reviewed before committing.
 - 2026-10-22 — C-01 bug reproduced: inserting `Press [red] to start and close with [/b].` in the sample text makes the app crash at layout time with `MarkupError: closing tag '[/b]' does not match any open tag` (Textual 8.2.5, Python 3.14). Evidence of why user text must never be parsed as markup ("before" for the thesis).
 - 2026-10-22 — C-01 fixed and verified: the same line, plus `[1]`, `[/b]` and a Markdown link, are shown literally with no crash, for the built-in sample (md), a `.md` file and a `.txt` file ("after" screenshots).
+- Evidence stored in `docs/figures/` (`c01_before_markup_error.txt`, `c01_after_literal_text.png`). Naming convention for all figures: `<decision/change id>_<short description>`.
 
 ---
 
