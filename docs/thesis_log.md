@@ -30,7 +30,7 @@ Updated at every working session. Language: English.
 | ID | Date | Decision | Rationale | Status |
 |---|---|---|---|---|
 | D-01 | 2026-10-12 | Ignore file-extension-specific handling for now; Markdown considered the most appropriate default. The document format is stated in the LLM prompt. | Keeps the pipeline simple while the core loop is built; the LLM can be told what markup to preserve. | Accepted |
-| D-02 | 2026-10-12 | Use **Ollama** for local inference during development. | Exposes an OpenAI-compatible endpoint, so the same client code can later target ChatGPT. Other non-compatible APIs will be added later behind an adapter. | Accepted |
+| D-02 | 2026-10-12 | Use **Ollama** for local inference during development. | Exposes an OpenAI-compatible endpoint, so the same client code can later target ChatGPT. Other non-compatible APIs will be added later behind an adapter. | Accepted; client choice revised by D-28 (native Ollama API) |
 | D-03 | 2026-10-12 | Start experiments on a **local model** before moving to large hosted LLMs. | Zero cost, fast iteration on prompt and output format, reproducible baseline. | Accepted |
 | D-04 | 2026-10-12 | **Chunk IDs are assigned and managed by the software, not by the LLM.** | The ID is only needed for navigation (jump between chunks/suggestions); letting the LLM echo it adds a failure point with no benefit. | Accepted |
 | D-05 | 2026-10-12 | LLM output: JSON with an explicit **`has_errors` flag** + a list of suggestions (`original`, `replacement`, `category`, `severity`, `explanation`). | The flag forces an explicit decision and allows a consistency check (`has_errors=true` with an empty list, or vice versa, is a detectable model failure). | Accepted (schema v0) |
@@ -57,6 +57,7 @@ Updated at every working session. Language: English.
 | D-25 | 2026-10-15 | **Error handling in `llm/`:** server unreachable / model missing → clear message, no traceback; request timeout (configurable); invalid or incoherent JSON → retry (1-2 times, configurable) then chunk state `error` with manual retry key; estimate prompt length before sending and warn if it exceeds `num_ctx`. All failures logged in `runs/`. | Failures are expected with small local models; they must be visible, recoverable and measurable. Resolves Q-07. | Accepted |
 | D-26 | 2026-10-15 | **Chunking within a length interval `[min, max]`, cut only at natural boundaries.** A chunk is made of whole paragraphs; consecutive short paragraphs are merged until `min` is reached (without exceeding `max`); a paragraph longer than `max` is split at sentence boundaries (fallback: `;`/`:`; last resort: word boundary, never inside a word). Headings are never split; code blocks are not sent to the LLM. Length measured in words (model-independent), converted to an approximate token count for the `num_ctx` check. Sentence splitting delegated to a multilingual library (e.g. pySBD, NLTK punkt) to handle abbreviations, decimals, "et al.". Initial interval to be fixed after a first experiment (Q-03). | Arbitrary cuts break sentences and context; boundaries keep chunks meaningful. Literature suggests a precision/recall trade-off with length, so the interval is a tunable parameter, not a constant. | Accepted (values TBD) |
 | D-27 | 2026-10-26 | **Thinking disabled by default**, exposed as a configuration option (`think = false`). Thinking ON vs OFF kept as a possible evaluation dimension (does reasoning reduce invented errors / over-correction enough to justify ≈ 4× latency?). | First measurement: same correctness on a simple input at ≈ 4× cost; at ~33 tok/s that would mean ~30 s per chunk. | Accepted |
+| D-28 | 2026-10-26 | **Native Ollama API for local models**, via an Ollama-specific adapter behind the D-24 interface; an OpenAI adapter will be added for ChatGPT. Context size (`num_ctx`), thinking (`think=false`) and the output JSON schema are then passed **per request from our TOML config**, so no Modelfile or server-wide variable is needed (resolves 2.6). | The three settings we need are first-class in the native API (`options.num_ctx`, `think`, `format` with a JSON schema), while the OpenAI-compatible endpoint has no context-size parameter and unclear thinking control. D-24 makes a second adapter cheap. Partially revises D-02 (single OpenAI-compatible client). Sources: S-05, S-06, S-07, S-08. | Accepted (2026-10-26) |
 
 ---
 
@@ -65,7 +66,7 @@ Updated at every working session. Language: English.
 - ~~**Q-01 — `explanation` field**~~ → resolved by D-18 (deeper explanation for semantic and clarity suggestions).
 - ~~**Q-02 — Context for chunk N**~~ → resolved by D-12 and D-13 (context = current version of N-1 with accepted changes only; `stale` + on-demand re-analysis).
 - **Q-03 — Chunk length:** choose the `[min, max]` interval of D-26 experimentally. Plan: same corpus with injected errors, chunk sizes of e.g. 1, 3, 5, 10, 15, 30 sentences; measure precision, recall, F0.5, over-correction rate, anchoring rate, latency; for each local model. Expected: precision ↑ and recall ↓ as length grows (see §7 references), so an optimum should exist.
-- **Q-04 — Local model choice:** policy fixed by D-23. Candidates (Ollama library, Oct 2026): **`qwen3.5:9b`** (~6.6 GB Q4, 201 languages, reasoning off by default in the small series) as primary; **`gemma4:e4b`** (Q4_K_M 6.6 GB / QAT 6.1 GB, different family) as second small model; **`gemma4:12b-it-qat`** (7.2 GB, likely partial CPU offload) as larger comparison; `qwen3.5:4b` (3.4 GB) as fallback if the 9B does not fit fully in VRAM. Newer families (qwen3.6/3.8, llama4, mistral-large/medium) have no variants that fit 8 GB. Exact tags and measurements to be recorded after setup.
+- **Q-04 — Local model choice:** policy fixed by D-23. Candidates (Ollama library, Oct 2026): **`qwen3.5:9b`** (~6.6 GB Q4, 201 languages, reasoning off by default in the small series) as primary; **`gemma4:e4b`** (Q4_K_M 6.6 GB / QAT 6.1 GB, different family) as second small model; **`gemma4:12b-it-qat`** (7.2 GB, likely partial CPU offload) as larger comparison; `qwen3.5:4b` (3.4 GB) as fallback if the 9B does not fit fully in VRAM. Newer families (qwen3.6/3.8, llama4, mistral-large/medium) have no variants that fit 8 GB. Exact tags and measurements to be recorded after setup. Sources: S-01 – S-04.
 - ~~**Q-07 — Error handling**~~ → resolved by D-25.
 - ~~**Q-08 — Provider interface**~~ → resolved by D-24.
 - ~~**Q-06 — Source view vs. rendered view**~~ → resolved by D-20 (source internally, rendered on screen, phased).
@@ -169,3 +170,20 @@ Input length and LLM correction quality — starting points for Q-03 and the rel
 | R-05 | *Context Length Alone Hurts LLM Performance Despite Perfect Retrieval*, Findings of EMNLP 2025. | Length itself degrades performance even when the relevant information is available. |
 | R-06 | Liu et al. — *Lost in the Middle: How Language Models Use Long Contexts*, TACL 2024. | Information in the middle of long inputs is used less: risk of missed errors mid-chunk. |
 | R-07 | Bryant et al. — *Grammatical Error Correction: A Survey of the State of the Art*, Computational Linguistics 49(3), 2023. | Background on GEC, standard metrics (F0.5, ERRANT). |
+
+### Technical sources (setup, models, APIs)
+
+Consulted while making implementation decisions; cite in the methodology / implementation chapters.
+
+| Ref | Source | Used for |
+|---|---|---|
+| S-01 | *Ollama Qwen (2026): Which Qwen Model Fits 8GB to 64GB?* — https://www.agenticwire.news/article/ollama-qwen (checked against Ollama v0.35.0) | Qwen sizes fitting 8 GB; qwen3.6/3.8 have no small variants (Q-04). |
+| S-02 | Unsloth — *Qwen3.5: run locally* — https://unsloth.ai/docs/models/qwen3.5.md | Qwen3.5 small series (0.8B–9B), ~6.5 GB at 4-bit for 9B, 201 languages, 256K context (Q-04). |
+| S-03 | Ollama library — *gemma4 tags* — https://ollama.com/library/gemma4/tags | Gemma 4 variants and sizes (e4b, 12b-it-qat) (Q-04). |
+| S-04 | *Ollama Models Cheat Sheet by VRAM* — https://computingforgeeks.com/ollama-models-cheat-sheet/ (Oct 2026) | Cross-check of 8 GB recommendations (Q-04). |
+| S-05 | Ollama docs — *FAQ* — https://docs.ollama.com/faq | Default context 4096; `OLLAMA_CONTEXT_LENGTH`; `ollama ps` GPU check; Linux install (2.2, 2.5, 2.6). |
+| S-06 | Ollama docs — *OpenAI compatibility* — https://docs.ollama.com/api/openai-compatibility | OpenAI-compatible endpoint has no context-size parameter (Modelfile needed) → motivation for D-28. |
+| S-07 | OpenClaw docs — *Ollama provider, advanced* — https://docs.openclaw.ai/providers/ollama/advanced.md | `think: false` and `num_ctx` documented for the native `/api/chat`, not for the OpenAI-compatible mode (D-28). |
+| S-08 | Ollama docs — *Thinking* — https://docs.ollama.com/capabilities/thinking.md | `think=False` in the Python library / REST; reasoning in `message.thinking`, answer in `message.content`; disabling only "if the model permits it" → verify the `thinking` field (D-27, D-28). |
+| S-09 | Ollama docs — *Structured outputs* — https://docs.ollama.com/capabilities/structured-outputs | `format=<JSON schema>` from a Pydantic model, `model_validate_json`; recommends temperature 0 and repeating the schema in the prompt (step 3–4). |
+
