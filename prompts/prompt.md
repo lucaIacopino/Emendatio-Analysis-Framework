@@ -2,9 +2,22 @@
 
 **Current version: v0.4**
 
-Placeholders in `{curly_braces}` are filled by the software before each request.
-`{language}` and `{doc_format}` come from the CLI (`--lang`, `--format`);
-`{format_rules}` is selected from the table below according to `{doc_format}`.
+> **Templates used by the code:** `prompts/system.txt` (system prompt) and
+> `prompts/user.txt` (user message template). They must always match the
+> *System prompt* and *User message template* blocks below: when the prompt
+> changes, update this file (text + changelog + version), both templates, and
+> `version` in `config/default.toml` in the same commit.
+
+Placeholders in `{curly_braces}` are filled by the software before each request
+(`llm/prompt.py`), by plain string replacement — not `str.format()`, because the
+JSON schema in the system prompt contains literal braces.
+- `{language}`, `{doc_format}`: from `[document]` in the configuration (later
+  overridable from the CLI with `--lang`, `--format`); `{doc_format}` is the
+  readable name (e.g. "Markdown") of the configured format code (e.g. `md`).
+- `{format_rules}`: selected from the table below according to the format code.
+- `{max_suggestions}`: from `[prompt]` in the configuration.
+- `{previous_chunk_text}`, `{chunk_text}`: the context and target chunks.
+
 Every request is **stateless**: system prompt + one user message (context + target chunk).
 
 ## Changelog
