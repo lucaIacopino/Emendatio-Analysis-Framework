@@ -1,0 +1,29 @@
+# Emendatio — default configuration
+# Personal overrides go in config/local.toml (ignored by git).
+# Generic keys are translated by each provider adapter (D-24, D-29).
+
+[llm]
+provider = "ollama"          # which adapter to use: "ollama" (later: "openai")
+temperature = 0.0            # 0 = most deterministic, for reproducible runs
+seed = 42                    # fixed seed for reproducibility
+presence_penalty = 0.0       # qwen3.5 default is 1.5: may hurt verbatim copy of "original"
+reasoning = false            # thinking/reasoning mode off (D-27)
+timeout_s = 120              # max seconds to wait for one response
+max_retries = 2              # retries on invalid or incoherent JSON (D-25)
+
+[llm.ollama]
+host = "http://localhost:11434"
+model = "qwen3.5:9b"
+num_ctx = 4096               # context window in tokens (Ollama default)
+
+# [llm.openai]               # to be added with the OpenAI adapter
+# model = "..."
+# api_key_env = "OPENAI_API_KEY"   # name of the env variable, never the key itself (D-21)
+
+[document]
+language = "English"         # language of the text to proofread (--lang)
+format = "md"                # "md" | "txt" | later "tex" (--format)
+
+[prompt]
+version = "v0.4"             # recorded in every experiment log (D-22)
+max_suggestions = 5          # cap on suggestions per chunk
